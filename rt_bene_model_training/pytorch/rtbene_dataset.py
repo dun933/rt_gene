@@ -1,7 +1,8 @@
-import os
+#! /usr/bin/env python3
 
 import numpy as np
 from PIL import Image
+import torch
 from torch.utils import data
 from torchvision import transforms
 from tqdm import tqdm
@@ -11,16 +12,16 @@ class RTBENEH5Dataset(data.Dataset):
 
     def __init__(self, h5_file, subject_list=None, transform=None, loader_desc="train"):
         self._h5_file = h5_file
-        self._transform = transform
         self._subject_labels = []
+        self.transform = transform
 
         assert subject_list is not None, "Must pass a list of subjects to load the data for"
 
-        if self._transform is None:
-            self._transform = transforms.Compose([transforms.Resize((224, 224), Image.BICUBIC),
-                                                  transforms.ToTensor(),
-                                                  transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                       std=[0.229, 0.224, 0.225])])
+        if transform is None:
+            self.transform = transforms.Compose([transforms.Resize((36, 60), interpolation=Image.BICUBIC),
+                                                 transforms.ToTensor(),
+                                                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                                      std=[0.229, 0.224, 0.225])])
 
         _wanted_subjects = ["s{:03d}".format(_i) for _i in subject_list]
 
@@ -61,12 +62,12 @@ class RTBENEH5Dataset(data.Dataset):
     def __getitem__(self, index):
         _sample = self._subject_labels[index]
         assert type(_sample[0]) == str, "Sample not found at index {}".format(index)
-        _left_img = self._h5_file[_sample[0] + "/left"][_sample[1]][()]
-        _right_img = self._h5_file[_sample[0] + "/right"][_sample[1]][()]
+        _left_img = self._h5_file[_sample[0] + "/left"][_sample[1]][()][0]
+        _right_img = self._h5_file[_sample[0] + "/right"][_sample[1]][()][0]
         _label = self._h5_file[_sample[0] + "/label"][()].astype(np.float32)
 
-        # Load data and get label
-        _transformed_left_img = self._transform(Image.fromarray(_left_img, 'RGB'))
-        _transformed_right_img = self._transform(Image.fromarray(_right_img, 'RGB'))
+        _left_img = self.transform(Image.fromarray(_left_img, "RGB"))
+        _right_img = self.transform(Image.fromarray(_right_img, "RGB"))
 
-        return _transformed_left_img, _transformed_right_img, _label
+        return _left_img, _right_img, _label
+
