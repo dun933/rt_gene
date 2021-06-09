@@ -34,7 +34,7 @@ class BlinkEstimationAbstractModel(nn.Module):
         right_x = torch.flatten(right_x, 1)
 
         eyes_x = torch.cat((left_x, right_x), dim=1)
-        fc_output = self.fc(eyes_x)
+        fc_output = torch.sigmoid(self.fc(eyes_x))
 
         return fc_output
 

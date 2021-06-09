@@ -7,7 +7,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 from PIL import ImageFilter
-from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+from pytorch_lightning.callbacks import ModelCheckpoint, StochasticWeightAveraging
 from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 
@@ -89,10 +89,9 @@ class TrainRTGENE(pl.LightningModule):
                 _params_to_update.append(param)
 
         _learning_rate = self.hparams.learning_rate
-        _optimizer = torch.optim.Adam(_params_to_update, lr=_learning_rate)
-        _scheduler = torch.optim.lr_scheduler.StepLR(_optimizer, step_size=30, gamma=0.1)
+        _optimizer = torch.optim.AdamW(_params_to_update, lr=_learning_rate)
 
-        return [_optimizer], [_scheduler]
+        return _optimizer
 
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -210,18 +209,18 @@ if __name__ == "__main__":
                              validate_subjects=valid_s,
                              test_subjects=test_s)
         # save all models
-        checkpoint_callback = ModelCheckpoint(filepath=os.path.join(complete_path, "{epoch}-{val_loss:.3f}"),
-                                              monitor='val_loss', mode='min', verbose=False,
-                                              save_top_k=-1 if not _hyperparams.augment else 5)
+        checkpoint_callback = ModelCheckpoint(filename="{epoch}-{val_loss:.3f}", monitor='val_loss', mode='min', verbose=False, save_top_k=-1 if not _hyperparams.augment else 5)
+        _annealing_epochs = int(_hyperparams.max_epochs - (0.8 * _hyperparams.max_epochs))
+        swa_callback = StochasticWeightAveraging(swa_epoch_start=0.8, annealing_epochs=_annealing_epochs, annealing_strategy="cos")
 
         # start training
         trainer = Trainer(gpus=_hyperparams.gpu,
                           precision=32,
-                          callbacks=[checkpoint_callback],
+                          callbacks=[checkpoint_callback, swa_callback],
                           progress_bar_refresh_rate=1,
                           min_epochs=_hyperparams.min_epochs,
                           max_epochs=_hyperparams.max_epochs,
                           accumulate_grad_batches=_hyperparams.accumulate_grad_batches,
                           benchmark=_hyperparams.benchmark)
         trainer.fit(_model)
-        trainer.test()
+        # trainer.test()

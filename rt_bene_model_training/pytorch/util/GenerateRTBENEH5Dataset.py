@@ -5,8 +5,7 @@ import os
 
 import h5py
 import numpy as np
-from PIL import Image, ImageFilter, ImageOps
-from torchvision import transforms
+from PIL import Image
 from tqdm import tqdm
 
 script_path = os.path.dirname(os.path.realpath(__file__))
@@ -25,13 +24,13 @@ if __name__ == "__main__":
 
     _compression = "lzf" if args.compress is True else None
 
-    subject_path = [os.path.join(args.rt_bene_root, "s{:03d}_noglasses/".format(_i)) for _i in range(0, 17)]
+    subject_path = [os.path.join(os.path.expanduser(args.rt_bene_root), "s{:03d}_noglasses/".format(_i)) for _i in range(0, 17)]
 
-    with h5py.File(os.path.abspath(os.path.join(args.rt_bene_root, "rtbene_dataset.hdf5")), mode='w') as hdf_file:
+    with h5py.File(os.path.abspath(os.path.join(os.path.expanduser(args.rt_bene_root), "rtbene_dataset.hdf5")), mode='w') as hdf_file:
         for subject_id, subject_data in enumerate(subject_path):
             subject_id = str("s{:03d}".format(subject_id))
             subject_grp = hdf_file.create_group(subject_id)
-            with open(os.path.join(args.rt_bene_root, "{}_blink_labels.csv".format(subject_id)), "r") as f:
+            with open(os.path.join(os.path.expanduser(args.rt_bene_root), "{}_blink_labels.csv".format(subject_id)), "r") as f:
                 _lines = f.readlines()
 
             for line in tqdm(_lines, desc="Subject {}".format(subject_id)):
@@ -45,6 +44,6 @@ if __name__ == "__main__":
                     if label != 0.5:  # paper removed 0.5s
                         left_image_data = np.array([np.array(Image.open(left_image_path).resize(_required_size))])
                         right_image_data = np.array([np.array(Image.open(right_image_path).resize(_required_size))])
-                        image_grp.create_dataset("left", data=left_image_data, compression=_compression)
-                        image_grp.create_dataset("right", data=left_image_data, compression=_compression)
+                        image_grp.create_dataset("left", data=[left_image_data], compression=_compression)
+                        image_grp.create_dataset("right", data=[right_image_data], compression=_compression)
                         image_grp.create_dataset("label", data=[label])

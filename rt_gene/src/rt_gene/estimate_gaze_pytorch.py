@@ -51,6 +51,7 @@ class GazeEstimator(GazeEstimatorBase):
 
         tqdm.write('Loaded ' + str(len(self._models)) + ' model(s)')
 
+    @torch.no_grad()
     def estimate_gaze_twoeyes(self, inference_input_left_list, inference_input_right_list, inference_headpose_list):
         transformed_left = torch.stack(inference_input_left_list).to(self.device_id_gazeestimation)
         transformed_right = torch.stack(inference_input_right_list).to(self.device_id_gazeestimation)
